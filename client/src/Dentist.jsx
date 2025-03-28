@@ -57,20 +57,23 @@ const Dentist = ({ userType }) => {
       alert("Invalid appointment ID");
       return;
     }
-  
+
     try {
       const { data } = await api.put(`/booking/${bookingId}/complete`);
       console.log("Booking Updated:", data);
-      
-      getAppointments(); 
-  
+
+      getAppointments();
+
       alert("Appointment marked as completed!");
     } catch (error) {
-      console.error("Error completing appointment:", error.response?.data || error.message);
+      console.error(
+        "Error completing appointment:",
+        error.response?.data || error.message
+      );
       alert("Failed to complete appointment. Try again.");
     }
   };
-  
+
   const handleCancelModal = () => {
     setShowAppointmentDetails(false);
   };
@@ -99,23 +102,14 @@ const Dentist = ({ userType }) => {
   // Get time slots for weekly view
   const timeSlots = [
     "8:30 AM",
-    "9:00 AM",
     "9:30 AM",
-    "10:00 AM",
     "10:30 AM",
-    "11:00 AM",
     "11:30 AM",
-    "12:00 PM",
-    "1:00 PM",
+    "12:30 PM",
     "1:30 PM",
-    "2:00 PM",
     "2:30 PM",
-    "3:00 PM",
     "3:30 PM",
-    "4:00 PM",
     "4:30 PM",
-    "5:00 PM",
-    "5:30 PM",
   ];
 
   // Filter appointments for selected week
@@ -144,14 +138,26 @@ const Dentist = ({ userType }) => {
   };
 
   const getAppointmentFor = (date, time) => {
-    return appointments.find((app) => {
-      return (
+
+    const normalizeTime = (timeStr) => {
+      return timeStr.replace(/^0*/, '').toUpperCase().trim();
+    };
+  
+    const filteredAppointments = appointments.filter((app) => {
+ 
+      // Robust date comparison
+      const sameDate = 
         app.bookingDate.getDate() === date.getDate() &&
         app.bookingDate.getMonth() === date.getMonth() &&
-        app.bookingDate.getFullYear() === date.getFullYear() &&
-        app.timeSlot === time
-      );
+        app.bookingDate.getFullYear() === date.getFullYear();
+  
+      // Normalize time comparison
+      const sameTime = normalizeTime(app.timeSlot || app.appTimeSlot) === normalizeTime(time);
+  
+      return sameDate && sameTime;
     });
+  
+    return filteredAppointments;
   };
 
   // Count weekly appointments
@@ -295,7 +301,9 @@ const Dentist = ({ userType }) => {
                                   <div
                                     key={app.id}
                                     className={`appointment-dot ${
-                                      app.status == "completed" ? "completed" : ""
+                                      app.status == "completed"
+                                        ? "completed"
+                                        : ""
                                     }`}
                                   >
                                     <span className="appointment-time">
@@ -384,46 +392,52 @@ const Dentist = ({ userType }) => {
                       </div>
 
                       {timeSlots.map((time, timeIndex) => {
-                        const appointment = getAppointmentFor(date, time);
+                        const appointments = getAppointmentFor(date, time);
 
                         return (
                           <div
                             key={timeIndex}
                             className={`time-cell ${
-                              appointment ? "has-appointment" : ""
-                            } ${
-                              appointment?.status == "completed"
-                                ? "completed-appointment"
-                                : ""
+                              appointments.length > 0 ? "has-appointment" : ""
                             }`}
                             onClick={() =>
-                              appointment && handleAppointmentClick(appointment)
+                              appointments.length > 0 &&
+                              handleAppointmentClick(appointments[0])
                             }
                           >
-                            {appointment && (
+                            {appointments.map((appointment, idx) => (
                               <div
+                                key={idx}
                                 className={`appointment-card ${
-                                  appointment.status == "completed" ? "completed" : ""
+                                  appointment.status === "completed"
+                                    ? "completed"
+                                    : ""
                                 }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAppointmentClick(appointment);
+                                }}
                               >
-                                <div className="appointment-time">
-                                  {appointment.timeSlot}
-                                </div>
                                 <div className="appointment-details">
                                   <div className="patient-name">
-                                    {appointment.customer?.name || "Unknown"}
+                                    {appointment.customer?.name ||
+                                      "Unknown Patient"}
                                   </div>
-                                  <div className="appointment-type">
-                                    {appointment.service?.name || "Service"}
+                                  <div className="appointment-time">
+                                    {appointment.timeSlot}
                                   </div>
-                                  {appointment.completed && (
+                                  <div className="service-name">
+                                    {appointment.service?.name ||
+                                      "General Service"}
+                                  </div>
+                                  {appointment.status === "completed" && (
                                     <div className="completion-status">
                                       Completed
                                     </div>
                                   )}
                                 </div>
                               </div>
-                            )}
+                            ))}
                           </div>
                         );
                       })}

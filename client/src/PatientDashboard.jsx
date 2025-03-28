@@ -5,10 +5,11 @@ import api from "./api/api";
 import axios from "axios";
 
 const PatientDashboard = () => {
-  const [view, setView] = useState("calendar"); // 'calendar' or 'history'
+  const [view, setView] = useState("calendar");
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [appointments, setAppointments] = useState([]);
+  const [allAppointments, setAllAppointments] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [formData, setFormData] = useState({
     dentist: "",
@@ -21,11 +22,15 @@ const PatientDashboard = () => {
   const [dentistList, setDentistsList] = useState([]);
   const [serviceList, setServiceList] = useState([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState([
-    "08:30 AM - 10:30 AM",
-    "10:30 AM - 12:30 PM",
-    "12:30 PM - 02:30 PM",
-    "02:30 PM - 04:30 PM",
-    "04:30 PM - 05:30 PM",
+    "08:30 AM",
+    "09:30 AM",
+    "10:30 AM",
+    "11:30 AM",
+    "12:30 PM",
+    "01:30 PM",
+    "02:30 PM",
+    "03:30 PM",
+    "04:30 PM",
   ]);
 
   const navigate = useNavigate();
@@ -34,10 +39,53 @@ const PatientDashboard = () => {
     const {
       data: { data },
     } = await api.get("/get-all-dentists-services");
+    console.log("data", data)
     setDentistsList(data?.dentists);
     setServiceList(data?.services);
   };
 
+  const getAllAppointment = async () => {
+    try {
+      const { data } = await api.get("get-all-bookings");
+      console.log("Raw Booking Data:", data);
+  
+      if (data && data.bookings) {
+        // Format the booking data properly
+        const formattedBookings = data.bookings.map((booking) => {
+          // Log the full booking object to understand its structure
+          console.log("Individual Booking:", booking);
+  
+          return {
+            _id: booking._id,
+            date: new Date(booking.bookingDate),
+            timeSlot: booking.timeSlot,
+            customerId: booking.customer ? booking.customer._id : null,
+            status: booking.status,
+            // Most flexible dentist ID extraction
+            dentist: 
+              booking.dentist?._id || 
+              booking.dentist?.userId?._id || 
+              booking.dentist || 
+              null,
+            service: booking.service ? booking.service._id : null,
+            paymentStatus: booking.paymentStatus,
+          };
+        });
+        
+        console.log("Formatted Bookings with Dentist IDs:", formattedBookings);
+        setAllAppointments(formattedBookings);
+      } else {
+        setAllAppointments([]);
+      }
+    } catch (error) {
+      console.error(
+        "Error fetching appointments:",
+        error.response?.data || error.message
+      );
+    }
+  };
+
+  console.log("allAppointments", allAppointments);
   const getAppointmentForUser = async () => {
     try {
       const userId = localStorage.getItem("userId");
@@ -53,6 +101,7 @@ const PatientDashboard = () => {
           _id: booking._id,
           date: new Date(booking.bookingDate),
           timeSlot: booking.timeSlot,
+          customerId: booking.customer,
           status: booking.status,
           dentist: booking.dentist[0] ? booking.dentist[0].userId : null,
           service: booking.service[0] ? booking.service[0] : null,
@@ -73,6 +122,7 @@ const PatientDashboard = () => {
   useEffect(() => {
     getData();
     getAppointmentForUser();
+    getAllAppointment();
   }, []);
 
   // Generate calendar dates for current month view
@@ -111,6 +161,14 @@ const PatientDashboard = () => {
   };
 
   const handleDateClick = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (date < today) {
+      alert("You cannot book an appointment for a past date.");
+      return;
+    }
+
     const day = date.getDay();
     if (day === 0 || day === 6) {
       alert("Appointments are only available Monday to Friday.");
@@ -232,6 +290,47 @@ const PatientDashboard = () => {
     const service = serviceList.find((s) => s._id === serviceId);
     return service ? service.name : "Unknown Service";
   };
+
+  const getBookedSlotsForDentist = () => {
+    if (!selectedDate || !formData.dentist) return [];
+  
+    console.log("all appointments....", allAppointments);
+    console.log("formData....", formData);
+  
+    return allAppointments
+      .filter((app) => {
+        // Convert both dates to YYYY-MM-DD format
+        const appointmentDate = new Date(app.date).toISOString().split("T")[0];
+        const selectedDateFormatted = new Date(formData.date).toISOString().split("T")[0];
+  
+        return (
+          app.dentist === formData.dentist && // Compare dentist ID correctly
+          appointmentDate === selectedDateFormatted // Compare date correctly
+        );
+      })
+      .map((app) => app.timeSlot);
+  };
+
+  
+  const getBookedSlotsForPatient = () => {
+    if (!selectedDate) return [];
+
+    const userId = localStorage.getItem("userId");
+
+    return appointments
+      .filter(
+        (app) =>
+          app.customerId === userId &&
+          app.date.toDateString() === selectedDate.toDateString()
+      )
+      .map((app) => app.timeSlot);
+  };
+
+  const bookedSlotsByDentist = getBookedSlotsForDentist();
+  const bookedSlotsByPatient = getBookedSlotsForPatient();
+
+  console.log("bookedSlotsByPatient", bookedSlotsByPatient);
+  console.log("bookedSlotsByDentist", bookedSlotsByDentist);
 
   return (
     <div className="dashboard-container">
@@ -442,11 +541,15 @@ const PatientDashboard = () => {
               </span>
             </div>
 
+                  
             <div className="appointment-form">
               <select
                 className="form-select"
                 value={formData.dentist}
-                onChange={(e) => handleInputChange("dentist", e.target.value)}
+                onChange={(e) => {
+                  const selectedDentistId = e.target.value;
+                  handleInputChange("dentist", selectedDentistId);
+                }}
               >
                 <option value="">Select Dentist</option>
 
@@ -454,8 +557,8 @@ const PatientDashboard = () => {
                   dentistList.map((dentist) => {
                     return (
                       <option
-                        key={dentist.userId._id}
-                        value={dentist.userId._id}
+                        key={dentist._id}
+                        value={dentist._id}
                       >
                         {dentist.userId.name}
                       </option>
@@ -482,17 +585,24 @@ const PatientDashboard = () => {
 
               <div className="time-slot-label">Select Time Slot</div>
               <div className="time-slot-grid">
-                {availableTimeSlots.map((slot) => (
-                  <button
-                    key={slot}
-                    className={`time-slot-button ${
-                      formData.timeSlot === slot ? "selected" : ""
-                    }`}
-                    onClick={() => handleInputChange("timeSlot", slot)}
-                  >
-                    {slot}
-                  </button>
-                ))}
+                {availableTimeSlots.map((slot) => {
+                  const isBooked =
+                    bookedSlotsByDentist.includes(slot) ||
+                    bookedSlotsByPatient.includes(slot);
+
+                  return (
+                    <button
+                      key={slot}
+                      className={`time-slot-button ${
+                        formData.timeSlot === slot ? "selected" : ""
+                      }`}
+                      onClick={() => handleInputChange("timeSlot", slot)}
+                      disabled={isBooked} 
+                    >
+                      {slot}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="cost-display">

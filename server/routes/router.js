@@ -471,7 +471,6 @@ router.get("/report/:period", async (req, res) => {
       return res.status(404).json({ message: "No bookings found for the selected period." });
     }
 
-    // **Fix: Group by Dentist Name and Count Patients Properly**
     const report = {};
 
     bookings.forEach((booking) => {
@@ -485,7 +484,7 @@ router.get("/report/:period", async (req, res) => {
         };
       }
 
-      report[dentistName].noOfBookings += 1; // Count every booking
+      report[dentistName].noOfBookings += 1; 
       report[dentistName].patientList.push({
         patientName: booking.customerName,
         serviceRequested: booking.serviceName,

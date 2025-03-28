@@ -350,6 +350,47 @@
     background-color: #d1d5db;
   }
 
+  .time-cell.has-appointment {
+    cursor: pointer;
+  }
+  
+  .appointment-card {
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  
+  .appointment-card.completed {
+    background-color: #e0e0e0;
+    color: #666;
+  }
+  
+  .appointment-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .patient-name {
+    font-weight: bold;
+  }
+  
+  .appointment-time {
+    color: #555;
+  }
+  
+  .service-name {
+    font-style: italic;
+  }
+  
+  .completion-status {
+    color: green;
+    font-weight: bold;
+    margin-top: 4px;
+  }
+  
   /* Add these styles to your Dashboard.css file */
 
 /* Modal styles */
