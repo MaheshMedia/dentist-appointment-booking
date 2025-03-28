@@ -13,10 +13,12 @@ const PatientDashboard = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [formData, setFormData] = useState({
     dentist: "",
+    dentistUserId: "",
     service: "",
     timeSlot: "",
     date: null,
   });
+
   const [activeView, setActiveView] = useState("dashboard");
 
   const [dentistList, setDentistsList] = useState([]);
@@ -182,7 +184,10 @@ const PatientDashboard = () => {
 
   // Handle form input changes
   const handleInputChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      [field]: value,
+    }));
   };
 
   const handleSubmitBooking = async (e) => {
@@ -194,7 +199,7 @@ const PatientDashboard = () => {
       const bookingData = {
         customerId: localStorage.getItem("userId"),
         serviceId: formData.service,
-        dentistId: formData.dentist,
+        dentistId: formData.dentistUserId,
         bookingDate: selectedDate,
         timeSlot: formData.timeSlot,
         paymentStatus: "pending",
@@ -306,8 +311,8 @@ const PatientDashboard = () => {
           .split("T")[0];
 
         return (
-          app.dentist === formData.dentist && // Compare dentist ID correctly
-          appointmentDate === selectedDateFormatted // Compare date correctly
+          app.dentist === formData.dentist && // Compare with dentist._id
+          appointmentDate === selectedDateFormatted // Compare date
         );
       })
       .map((app) => app.timeSlot);
@@ -564,22 +569,34 @@ const PatientDashboard = () => {
             <div className="appointment-form">
               <select
                 className="form-select"
-                value={formData.dentist}
+                value={formData.dentist || ""}
                 onChange={(e) => {
                   const selectedDentistId = e.target.value;
-                  handleInputChange("dentist", selectedDentistId);
+                  const selectedDentist = dentistList.find(
+                    (d) => d._id === selectedDentistId
+                  );
+
+                  setFormData((prev) => ({
+                    ...prev,
+                    dentist: selectedDentistId,
+                    dentistUserId: selectedDentist
+                      ? selectedDentist.userId._id
+                      : "",
+                  }));
+
+                  console.log("Updated Dentist:", selectedDentistId);
+                  console.log(
+                    "Updated Dentist User ID:",
+                    selectedDentist ? selectedDentist.userId._id : ""
+                  );
                 }}
               >
                 <option value="">Select Dentist</option>
-
-                {dentistList &&
-                  dentistList.map((dentist) => {
-                    return (
-                      <option key={dentist._id} value={dentist._id}>
-                        {dentist.userId.name}
-                      </option>
-                    );
-                  })}
+                {dentistList.map((dentist) => (
+                  <option key={dentist._id} value={dentist._id}>
+                    {dentist.userId.name}
+                  </option>
+                ))}
               </select>
               <select
                 className="form-select"
