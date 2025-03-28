@@ -39,7 +39,7 @@ const PatientDashboard = () => {
     const {
       data: { data },
     } = await api.get("/get-all-dentists-services");
-    console.log("data", data)
+    console.log("data", data);
     setDentistsList(data?.dentists);
     setServiceList(data?.services);
   };
@@ -48,13 +48,13 @@ const PatientDashboard = () => {
     try {
       const { data } = await api.get("get-all-bookings");
       console.log("Raw Booking Data:", data);
-  
+
       if (data && data.bookings) {
         // Format the booking data properly
         const formattedBookings = data.bookings.map((booking) => {
           // Log the full booking object to understand its structure
           console.log("Individual Booking:", booking);
-  
+
           return {
             _id: booking._id,
             date: new Date(booking.bookingDate),
@@ -62,16 +62,16 @@ const PatientDashboard = () => {
             customerId: booking.customer ? booking.customer._id : null,
             status: booking.status,
             // Most flexible dentist ID extraction
-            dentist: 
-              booking.dentist?._id || 
-              booking.dentist?.userId?._id || 
-              booking.dentist || 
+            dentist:
+              booking.dentist?._id ||
+              booking.dentist?.userId?._id ||
+              booking.dentist ||
               null,
             service: booking.service ? booking.service._id : null,
             paymentStatus: booking.paymentStatus,
           };
         });
-        
+
         console.log("Formatted Bookings with Dentist IDs:", formattedBookings);
         setAllAppointments(formattedBookings);
       } else {
@@ -293,16 +293,18 @@ const PatientDashboard = () => {
 
   const getBookedSlotsForDentist = () => {
     if (!selectedDate || !formData.dentist) return [];
-  
+
     console.log("all appointments....", allAppointments);
     console.log("formData....", formData);
-  
+
     return allAppointments
       .filter((app) => {
         // Convert both dates to YYYY-MM-DD format
         const appointmentDate = new Date(app.date).toISOString().split("T")[0];
-        const selectedDateFormatted = new Date(formData.date).toISOString().split("T")[0];
-  
+        const selectedDateFormatted = new Date(formData.date)
+          .toISOString()
+          .split("T")[0];
+
         return (
           app.dentist === formData.dentist && // Compare dentist ID correctly
           appointmentDate === selectedDateFormatted // Compare date correctly
@@ -311,7 +313,6 @@ const PatientDashboard = () => {
       .map((app) => app.timeSlot);
   };
 
-  
   const getBookedSlotsForPatient = () => {
     if (!selectedDate) return [];
 
@@ -324,6 +325,25 @@ const PatientDashboard = () => {
           app.date.toDateString() === selectedDate.toDateString()
       )
       .map((app) => app.timeSlot);
+  };
+
+  const getCurrentTimeSlot = () => {
+    const now = new Date();
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
+
+    return availableTimeSlots.find((slot) => {
+      const [time, period] = slot.split(" ");
+      let [hours, minutes] = time.split(":").map(Number);
+
+      if (period === "PM" && hours !== 12) hours += 12;
+      if (period === "AM" && hours === 12) hours = 0;
+
+      return (
+        hours > currentHours ||
+        (hours === currentHours && minutes >= currentMinutes)
+      );
+    });
   };
 
   const bookedSlotsByDentist = getBookedSlotsForDentist();
@@ -541,7 +561,6 @@ const PatientDashboard = () => {
               </span>
             </div>
 
-                  
             <div className="appointment-form">
               <select
                 className="form-select"
@@ -556,16 +575,12 @@ const PatientDashboard = () => {
                 {dentistList &&
                   dentistList.map((dentist) => {
                     return (
-                      <option
-                        key={dentist._id}
-                        value={dentist._id}
-                      >
+                      <option key={dentist._id} value={dentist._id}>
                         {dentist.userId.name}
                       </option>
                     );
                   })}
               </select>
-
               <select
                 className="form-select"
                 value={formData.service}
@@ -582,13 +597,16 @@ const PatientDashboard = () => {
                     );
                   })}
               </select>
-
               <div className="time-slot-label">Select Time Slot</div>
               <div className="time-slot-grid">
                 {availableTimeSlots.map((slot) => {
                   const isBooked =
                     bookedSlotsByDentist.includes(slot) ||
                     bookedSlotsByPatient.includes(slot);
+
+                  const isPastSlot =
+                    new Date(formData.date).toDateString() ===
+                      new Date().toDateString() && slot < getCurrentTimeSlot();
 
                   return (
                     <button
@@ -597,14 +615,14 @@ const PatientDashboard = () => {
                         formData.timeSlot === slot ? "selected" : ""
                       }`}
                       onClick={() => handleInputChange("timeSlot", slot)}
-                      disabled={isBooked} 
+                      disabled={isBooked || isPastSlot}
                     >
                       {slot}
                     </button>
                   );
                 })}
               </div>
-
+              ;
               <div className="cost-display">
                 <div className="cost-amount">
                   {formData.service && serviceList.length > 0
@@ -614,7 +632,6 @@ const PatientDashboard = () => {
                   <span className="cost-note"> including GST</span>
                 </div>
               </div>
-
               <div className="form-actions">
                 <button
                   className="cancel-button"
