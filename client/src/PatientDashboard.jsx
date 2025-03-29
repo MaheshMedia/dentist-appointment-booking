@@ -194,64 +194,59 @@ const PatientDashboard = () => {
     e.preventDefault();
 
     try {
-      const token = localStorage.getItem("token");
+        const token = localStorage.getItem("token");
 
-      const bookingData = {
-        customerId: localStorage.getItem("userId"),
-        serviceId: formData.service,
-        dentistId: formData.dentistUserId,
-        bookingDate: selectedDate,
-        timeSlot: formData.timeSlot,
-        paymentStatus: "pending",
-      };
+        const service = serviceList.find((s) => s._id === formData.service);
+        const servicePrice = service ? service.price : 0;
 
-      const response = await axios.post(
-        "http://localhost:5000/api/book",
-        bookingData,
-        {
-          headers: {
-            Authorization: `${token}`,
-          },
-        }
-      );
+        const dentist = dentistList.find((d) => d._id === formData.dentist);
+        const dentistCharge = dentist ? dentist.hourlyRate : 0;
 
-      console.log("Booking added:", response.data);
-      setShowModal(false);
+        const totalAmount = servicePrice + dentistCharge;
 
-      // Define newAppointment with proper structure matching other appointments
-      const newAppointment = {
-        _id: response.data._id || Date.now().toString(), // Use actual ID if available
-        date: selectedDate,
-        timeSlot: formData.timeSlot,
-        dentist: { name: formData.dentistName || "Selected Dentist" },
-        service: { name: formData.serviceName || "Selected Service" },
-        paymentStatus: "pending",
-      };
+        const bookingData = {
+            customerId: localStorage.getItem("userId"),
+            serviceId: formData.service,
+            dentistId: formData.dentistUserId, 
+            bookingDate: selectedDate,
+            timeSlot: formData.timeSlot,
+            totalAmount, // Send total amount
+            paymentStatus: "pending",
+        };
 
-      setFormData({
-        dentist: "",
-        service: "",
-        timeSlot: "",
-        date: null,
-      });
-      alert("Slot Booked successfully");
-      setAppointments([...appointments, newAppointment]);
+        const response = await axios.post(
+            "http://localhost:5000/api/book",
+            bookingData,
+            {
+                headers: {
+                    Authorization: `${token}`,
+                },
+            }
+        );
 
-      // Refresh appointments to get the latest data from API
-      getAppointmentForUser();
+        console.log("Booking added:", response.data);
+        setShowModal(false);
+        alert("Slot Booked successfully");
 
-      setActiveView("dashboard");
+        setAppointments([...appointments, {
+            _id: response.data._id || Date.now().toString(),
+            date: selectedDate,
+            timeSlot: formData.timeSlot,
+            dentist: { name: dentist ? dentist.userId.name : "Selected Dentist" },
+            service: { name: service ? service.name : "Selected Service" },
+            totalAmount,
+            paymentStatus: "pending",
+        }]);
+
+        getAppointmentForUser();
+        setActiveView("dashboard");
+
     } catch (error) {
-      console.error(
-        "Error adding Booking:",
-        error.response?.data || error.message
-      );
-      alert(
-        "Error adding Booking: " +
-          (error.response?.data?.error || error.message)
-      );
+        console.error("Error adding Booking:", error.response?.data || error.message);
+        alert("Error adding Booking: " + (error.response?.data?.error || error.message));
     }
-  };
+};
+
 
   // Navigate between months
   const changeMonth = (increment) => {
@@ -642,10 +637,16 @@ const PatientDashboard = () => {
               ;
               <div className="cost-display">
                 <div className="cost-amount">
-                  {formData.service && serviceList.length > 0
-                    ? serviceList.find((s) => s._id === formData.service)
-                        ?.price || "0.00"
-                    : "0.00"}
+                  {(() => {
+                    const servicePrice =
+                      serviceList.find((s) => s._id === formData.service)
+                        ?.price || 0;
+                    const dentistCharge =
+                      dentistList.find((d) => d._id === formData.dentist)
+                        ?.hourlyRate || 0;
+
+                    return (servicePrice + dentistCharge).toFixed(2); 
+                  })()}
                   <span className="cost-note"> including GST</span>
                 </div>
               </div>

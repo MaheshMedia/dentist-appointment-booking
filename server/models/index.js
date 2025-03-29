@@ -18,7 +18,7 @@ const ServiceSchema = new mongoose.Schema({
 const DentistSchema = new mongoose.Schema({
     userId:{type:mongoose.Schema.Types.ObjectId,ref:'User', required: true, unique: true  },
     mobileNo: { type: String, required: true },
-    gender: { type: String, enum: ['male', 'female', 'Other'], required: true },
+    gender: { type: String, enum: ['Male', 'female', 'Other'], required: true },
     hourlyRate: Number
 });
 
@@ -29,6 +29,7 @@ const BookingSchema = new mongoose.Schema({
     dentist: { type: mongoose.Schema.Types.ObjectId, ref: 'Dentist' },
     bookingDate: Date,
     timeSlot: String,
+    totalAmount: { type: Number, required: true },
     paymentStatus: { type: String, enum: ['pending', 'completed'], default: 'pending' },
     status: { type: String, enum: ['booked', 'completed'], default: 'booked' }
 });

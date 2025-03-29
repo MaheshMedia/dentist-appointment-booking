@@ -67,7 +67,7 @@ router.post("/login", async (req, res) => {
 
 // Create a new booking (Customer)
 router.post("/book", async (req, res) => {
-  const { customerId, serviceId, dentistId, bookingDate, timeSlot } = req.body;
+  const { customerId, serviceId, dentistId, bookingDate, timeSlot, totalAmount } = req.body;
 
   try {
     const today = new Date();
@@ -76,18 +76,15 @@ router.post("/book", async (req, res) => {
     const selectedDate = new Date(bookingDate);
     selectedDate.setHours(0, 0, 0, 0);
 
-    // Check if the selected date is a past date
     if (selectedDate < today) {
       return res.status(400).json({ error: "You cannot choose past dates." });
     }
 
-    // Check if the selected date is a weekday (Monday - Friday)
     const day = selectedDate.getDay();
     if (day === 0 || day === 6) {
       return res.status(400).json({ error: "Appointments are only available Monday to Friday." });
     }
 
-    // Parse the time slot
     const [startTime] = timeSlot.split(" - ");
     const [startHours, startMinutes] = startTime.split(/[: ]/);
     const isPM = startTime.includes("PM");
@@ -154,6 +151,7 @@ router.post("/book", async (req, res) => {
       dentist: dentistId,
       timeSlot,
       bookingDate,
+      totalAmount,
       paymentStatus: "completed",
     });
 
